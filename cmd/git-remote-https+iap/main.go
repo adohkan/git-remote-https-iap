@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -18,10 +20,15 @@ var (
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			remote, url := args[0], args[1]
-			fmt.Printf("%s %s %s\n", BinaryName, remote, url)
+			log.Debug().Msgf("%s %s %s", BinaryName, remote, url)
 		},
 	}
 )
+
+func init() {
+	// set default log level
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+}
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
