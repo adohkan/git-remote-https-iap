@@ -2,9 +2,11 @@ package git
 
 import (
 	"bytes"
+	"fmt"
 	_url "net/url"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"syscall"
 
@@ -49,4 +51,43 @@ func PassThruRemoteHTTPSHelper(remote, url string) {
 	if err := syscall.Exec(binary, args, env); err != nil {
 		log.Fatal().Msgf("passThruRemoteHTTPSHelper - %s", err.Error())
 	}
+}
+
+func StoreCredentials(protocol, host, username, password string) error {
+	var stdin bytes.Buffer
+
+	cmd := exec.Command(GitBinary, "credential-store", "store")
+	// see: https://git-scm.com/docs/git-credential
+	params := fmt.Sprintf("protocol=%s\nhost=%s\nusername=%s\npassword=%s\n", protocol, host, username, password)
+	if _, err := stdin.Write([]byte(params)); err != nil {
+		return err
+	}
+	cmd.Stdin = &stdin
+	res := cmd.Run()
+	if res == nil {
+		log.Debug().Msgf("StoreCredentials - credentials saved for protocol=%s,host=%s,username=%s", protocol, host, username)
+	}
+	return res
+}
+
+func GetCredentials(protocol, host, username string) (string, error) {
+	var stdin, stdout bytes.Buffer
+
+	cmd := exec.Command(GitBinary, "credential-store", "get")
+	// see: https://git-scm.com/docs/git-credential
+	params := fmt.Sprintf("protocol=%s\nhost=%s\nusername=%s\n", protocol, host, username)
+	stdin.Write([]byte(params))
+	cmd.Stdin = &stdin
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+
+	match := regexp.MustCompile("password=(.*)").FindStringSubmatch(string(stdout.Bytes()))
+	if match != nil {
+		log.Debug().Msgf("GetCredentials - found credentials for protocol=%s,host=%s,username=%s", protocol, host, username)
+		return match[1], nil
+	}
+
+	return "", fmt.Errorf("GetCredentials - not found for protocol=%s,host=%s,username=%s", protocol, host, username)
 }
