@@ -4,6 +4,7 @@ import (
 	"fmt"
 	_url "net/url"
 	"os"
+	"time"
 
 	"github.com/adohkan/git-remote-https-iap/internal/git"
 	"github.com/adohkan/git-remote-https-iap/internal/iap"
@@ -65,9 +66,21 @@ func handleIAPAuthCookieFor(url string) {
 		log.Error().Msgf("Could not convert %s in https://: %s", url, err)
 	}
 
-	log.Debug().Msgf("Manage IAP auth for %s", os.Args[0], url)
+	log.Debug().Msgf("Manage IAP auth for %s", url)
 
-	if _, err = iap.NewCookie(url); err != nil {
+	cookie, err := iap.ReadCookie(url)
+	switch {
+	case err != nil:
+		log.Debug().Msgf("could not read IAP cookie for %s: %s", url, err.Error())
+		cookie, err = iap.NewCookie(url)
+	case cookie.Expired():
+		log.Debug().Msgf("IAP cookie for %s has expired", url)
+		cookie, err = iap.NewCookie(url)
+	case !cookie.Expired():
+		log.Debug().Msgf("IAP Cookie still valid until %s", time.Unix(cookie.Claims.ExpiresAt, 0))
+	}
+
+	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
 }
