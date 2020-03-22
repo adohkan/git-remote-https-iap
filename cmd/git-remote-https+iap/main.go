@@ -4,6 +4,7 @@ import (
 	"fmt"
 	_url "net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,9 @@ import (
 
 const (
 	BinaryName = "git-remote-https+iap"
+
+	// DebugEnvVariable is the name of the environment variable that needs to be set in order to enable debug logging
+	DebugEnvVariable = "GIT_IAP_VERBOSE"
 )
 
 var (
@@ -64,8 +68,11 @@ func init() {
 	configureCmd.MarkFlagRequired("clientID")
 	rootCmd.AddCommand(configureCmd)
 
-	// set default log level
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	// set log level
+	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	if debug, _ := strconv.ParseBool(os.Getenv(DebugEnvVariable)); debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
 }
 
 func main() {
