@@ -7,12 +7,18 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/adohkan/git-remote-https-iap/internal/git"
 	"github.com/int128/oauth2cli"
 	"github.com/pkg/browser"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/sync/errgroup"
+)
+
+const (
+	CacheProtocol = "iap"
+	CacheUsername = "refresh-token"
 )
 
 type Token struct {
@@ -81,13 +87,29 @@ func getRefreshTokenFromBrowserFlow(domain, helperID, helperSecret string) (stri
 	return token.RefreshToken, nil
 }
 
+func cacheRefreshToken(key, token string) error {
+	return git.StoreCredentials(CacheProtocol, key, CacheUsername, token)
+}
+
+func getRefreshTokenFromCache(key string) (string, error) {
+	return git.GetCredentials(CacheProtocol, key, CacheUsername)
+}
+
 // GetIAPAuthToken returns a raw IAP auth token for the given args
 func GetIAPAuthToken(domain, helperID, helperSecret, IAPclientID string) (string, error) {
 	var result Token
 
-	refreshToken, err := getRefreshTokenFromBrowserFlow(domain, helperID, helperSecret)
+	refreshToken, err := getRefreshTokenFromCache(domain)
 	if err != nil {
-		return "", err
+		log.Debug().Msgf("no cached refresh token for %s: %s", domain, err.Error())
+
+		refreshToken, err = getRefreshTokenFromBrowserFlow(domain, helperID, helperSecret)
+		if err != nil {
+			return "", err
+		}
+		if err := cacheRefreshToken(domain, refreshToken); err != nil {
+			log.Warn().Msgf("could not cache refresh token for %s: %s", domain, err.Error())
+		}
 	}
 
 	// exchange our refreshToken for an id_token that we can use as GCP_IAAP_AUTH_TOKEN
