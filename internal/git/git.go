@@ -33,6 +33,16 @@ func ConfigGetURLMatch(key, url string) string {
 	return strings.TrimSpace(string(stdout.Bytes()))
 }
 
+func SetGlobalConfig(url, section, key, value string) {
+	x := fmt.Sprintf("%s.%s.%s", section, url, key)
+	args := []string{"config", "--global", x, value}
+	cmd := exec.Command(GitBinary, args...)
+
+	if err := cmd.Run(); err != nil {
+		log.Fatal().Msgf("SetGlobalConfig - could not set config '%s': %s", x, err)
+	}
+}
+
 func PassThruRemoteHTTPSHelper(remote, url string) {
 	u, err := _url.Parse(url)
 	if err != nil {

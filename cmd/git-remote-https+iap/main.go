@@ -21,6 +21,9 @@ const (
 var (
 	version string
 
+	// only used in configureCmd
+	repoURL, helperID, helperSecret, clientID string
+
 	rootCmd = &cobra.Command{
 		Use:   fmt.Sprintf("%s remote url", BinaryName),
 		Short: "git-remote-helper that handles authentication for GCP Identity Aware Proxy",
@@ -39,11 +42,27 @@ var (
 		Short: "Install protocol in Git config",
 		Run:   installGitProtocol,
 	}
+
+	configureCmd = &cobra.Command{
+		Use:   "configure",
+		Short: "Configure IAP for a given repository",
+		Run:   configureIAP,
+	}
 )
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(installProtocolCmd)
+
+	configureCmd.Flags().StringVar(&repoURL, "repoURL", "", "URL of the git repository to configure (required)")
+	configureCmd.MarkFlagRequired("repoURL")
+	configureCmd.Flags().StringVar(&helperID, "helperID", "", "OAuth Client ID for the helper (required)")
+	configureCmd.MarkFlagRequired("helperID")
+	configureCmd.Flags().StringVar(&helperSecret, "helperSecret", "", "OAuth Client Secret for the helper (required)")
+	configureCmd.MarkFlagRequired("helperSecret")
+	configureCmd.Flags().StringVar(&clientID, "clientID", "", "OAuth Client ID of the IAP instance (required)")
+	configureCmd.MarkFlagRequired("clientID")
+	rootCmd.AddCommand(configureCmd)
 
 	// set default log level
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -72,6 +91,28 @@ func installGitProtocol(cmd *cobra.Command, args []string) {
 	p := strings.TrimLeft(BinaryName, "git-remote-")
 	git.InstallProtocol(p)
 	log.Info().Msgf("%s protocol configured in git!", p)
+}
+
+func configureIAP(cmd *cobra.Command, args []string) {
+	repo, err := _url.Parse(repoURL)
+	https := fmt.Sprintf("https://%s", repo.Host)
+	if err != nil {
+		log.Error().Msgf("Could not convert %s in https://: %s", https, err)
+	}
+
+	log.Info().Msgf("Configure IAP for %s", https)
+	git.SetGlobalConfig(https, "iap", "helperID", helperID)
+	git.SetGlobalConfig(https, "iap", "helperSecret", helperSecret)
+	git.SetGlobalConfig(https, "iap", "clientID", clientID)
+
+	// let users manipulate standard 'https://' urls
+	httpsIAP := fmt.Sprintf("https+iap://%s", repo.Host)
+	git.SetGlobalConfig(httpsIAP, "url", "insteadOf", https)
+
+	// set cookie path
+	domainSlug := strings.ReplaceAll(repo.Host, ".", "-")
+	cookiePath := fmt.Sprintf("~/.config/gcp-iap/%s.cookie", domainSlug)
+	git.SetGlobalConfig(https, "http", "cookieFile", cookiePath)
 }
 
 func handleIAPAuthCookieFor(url string) {
