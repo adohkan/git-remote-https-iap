@@ -4,6 +4,7 @@ import (
 	"fmt"
 	_url "net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/adohkan/git-remote-https-iap/internal/git"
@@ -30,14 +31,19 @@ var (
 	versionCmd = &cobra.Command{
 		Use:   "version",
 		Short: "Print version number",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("%s %s\n", BinaryName, version)
-		},
+		Run:   printVersion,
+	}
+
+	installProtocolCmd = &cobra.Command{
+		Use:   "install",
+		Short: "Install protocol in Git config",
+		Run:   installGitProtocol,
 	}
 )
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(installProtocolCmd)
 
 	// set default log level
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -56,6 +62,16 @@ func execute(cmd *cobra.Command, args []string) {
 
 	handleIAPAuthCookieFor(url)
 	git.PassThruRemoteHTTPSHelper(remote, url)
+}
+
+func printVersion(cmd *cobra.Command, args []string) {
+	fmt.Printf("%s %s\n", BinaryName, version)
+}
+
+func installGitProtocol(cmd *cobra.Command, args []string) {
+	p := strings.TrimLeft(BinaryName, "git-remote-")
+	git.InstallProtocol(p)
+	log.Info().Msgf("%s protocol configured in git!", p)
 }
 
 func handleIAPAuthCookieFor(url string) {
