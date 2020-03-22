@@ -91,3 +91,12 @@ func GetCredentials(protocol, host, username string) (string, error) {
 
 	return "", fmt.Errorf("GetCredentials - not found for protocol=%s,host=%s,username=%s", protocol, host, username)
 }
+
+func InstallProtocol(protocol string) {
+	protocol = fmt.Sprintf("protocol.%s.allow", protocol)
+	args := []string{"config", "--global", protocol, "always"}
+	cmd := exec.Command(GitBinary, args...)
+	if err := cmd.Run(); err != nil {
+		log.Fatal().Msgf("InstallProtocol - %s", err)
+	}
+}
