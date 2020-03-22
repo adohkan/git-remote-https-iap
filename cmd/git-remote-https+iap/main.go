@@ -17,15 +17,27 @@ const (
 )
 
 var (
+	version string
+
 	rootCmd = &cobra.Command{
 		Use:   fmt.Sprintf("%s remote url", BinaryName),
 		Short: "git-remote-helper that handles authentication for GCP Identity Aware Proxy",
 		Args:  cobra.ExactArgs(2),
 		Run:   execute,
 	}
+
+	versionCmd = &cobra.Command{
+		Use:   "version",
+		Short: "Print version number",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("%s %s\n", BinaryName, version)
+		},
+	}
 )
 
 func init() {
+	rootCmd.AddCommand(versionCmd)
+
 	// set default log level
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 }
