@@ -5,6 +5,7 @@ import (
 	_url "net/url"
 	"os"
 
+	"github.com/adohkan/git-remote-https-iap/internal/git"
 	"github.com/adohkan/git-remote-https-iap/internal/iap"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -41,6 +42,7 @@ func execute(cmd *cobra.Command, args []string) {
 	log.Debug().Msgf("%s %s %s", BinaryName, remote, url)
 
 	handleIAPAuthCookieFor(url)
+	git.PassThruRemoteHTTPSHelper(remote, url)
 }
 
 func handleIAPAuthCookieFor(url string) {
