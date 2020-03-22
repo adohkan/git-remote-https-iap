@@ -1,10 +1,13 @@
 package iap
 
 import (
+	"bufio"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
 
@@ -23,6 +26,68 @@ type Cookie struct {
 	Domain  string
 	Token   jwt.Token
 	Claims  jwt.StandardClaims
+}
+
+// ReadCookie lookup the http.cookieFile for a given domain and try to load it from the filesystem
+func ReadCookie(domain string) (*Cookie, error) {
+	cookieFile := git.ConfigGetURLMatch("http.cookieFile", domain)
+
+	url, err := url.Parse(domain)
+	if err != nil {
+		return nil, err
+	}
+
+	c := Cookie{
+		JarPath: cookieFile,
+		Domain:  url.Host,
+	}
+
+	rawToken, err := c.readRawTokenFromJar()
+	if err != nil {
+		return nil, err
+	}
+
+	token, claims, err := parseJWToken(rawToken)
+	if err != nil {
+		return nil, err
+	}
+
+	c.Token = token
+	c.Claims = claims
+
+	return &c, nil
+}
+
+func (c *Cookie) readRawTokenFromJar() (string, error) {
+	path := expandHome(c.JarPath)
+
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#") || line == "" {
+			continue
+		}
+		fields := strings.Split(line, "\t")
+		if len(fields) != 7 {
+			log.Warn().Msgf("readRawTokenFromJar - unexpected format while parsing IAP cookie: %v", line)
+			continue
+		}
+		// see: https://curl.haxx.se/docs/http-cookies.html
+		cookieName, cookieValue := fields[5], strings.TrimSpace(fields[6])
+		if cookieName != IAPCookieName {
+			log.Debug().Msgf("readRawTokenFromJar - skip '%s' while parsing IAP cookie", cookieName)
+			continue
+		}
+
+		return cookieValue, nil
+	}
+	return "", fmt.Errorf("readRawTokenFromJar - %s not found", IAPCookieName)
 }
 
 // NewCookie takes care of the authentication workflow and creates the relevant IAP Cookie on the filesystem
@@ -79,6 +144,11 @@ func (c *Cookie) write(token string, exp int64) error {
 	}
 
 	return nil
+}
+
+// Expired returns a boolean that indicate if the expires-at claim is in the future
+func (c *Cookie) Expired() bool {
+	return c.Claims.ExpiresAt < time.Now().Unix()
 }
 
 func parseJWToken(rawToken string) (jwt.Token, jwt.StandardClaims, error) {
