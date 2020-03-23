@@ -1,12 +1,16 @@
 # git-remote-https+iap
 
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/adohkan/git-remote-https-iap)](https://github.com/adohkan/git-remote-https-iap/releases/latest)
+[![GitHub](https://img.shields.io/github/license/adohkan/git-remote-https-iap)](LICENSE.txt)
+[![Go Report Card](https://goreportcard.com/badge/github.com/adohkan/git-remote-https-iap)](https://goreportcard.com/report/github.com/adohkan/git-remote-https-iap)
+
 An open source [`git-remote-helper`](https://git-scm.com/docs/git-remote-helpers) that handles authentication for [GCP Identity Aware Proxy](https://cloud.google.com/iap).
 
 ## Getting Started
 
 ### Installing
 
-- Download pre-compiled binaries from [`our release page`](https://github.com/stang/ci-sandbox/releases/).
+- Download pre-compiled binaries from [`our release page`](https://github.com/adohkan/git-remote-https-iap/releases/latest).
 - Install `git-remote-https+iap` binary onto the system `$PATH`
 - Run `GIT_IAP_VERBOSE=1 git-remote-https+iap install`
 
