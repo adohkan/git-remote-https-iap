@@ -1,0 +1,27 @@
+on:
+  push:
+    tags:
+      - 'v*'
+
+name: Releases
+
+jobs:
+  build:
+    name: Draft Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Build project
+        run: make release
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          draft: true
+          files: dist/releases/*
