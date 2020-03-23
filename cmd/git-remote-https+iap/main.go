@@ -16,20 +16,19 @@ import (
 )
 
 const (
-	BinaryName = "git-remote-https+iap"
-
 	// DebugEnvVariable is the name of the environment variable that needs to be set in order to enable debug logging
 	DebugEnvVariable = "GIT_IAP_VERBOSE"
 )
 
 var (
-	version string
+	binaryName = os.Args[0]
+	version    string
 
 	// only used in configureCmd
 	repoURL, helperID, helperSecret, clientID string
 
 	rootCmd = &cobra.Command{
-		Use:   fmt.Sprintf("%s remote url", BinaryName),
+		Use:   fmt.Sprintf("%s remote url", binaryName),
 		Short: "git-remote-helper that handles authentication for GCP Identity Aware Proxy",
 		Args:  cobra.ExactArgs(2),
 		Run:   execute,
@@ -84,18 +83,18 @@ func main() {
 
 func execute(cmd *cobra.Command, args []string) {
 	remote, url := args[0], args[1]
-	log.Debug().Msgf("%s %s %s", BinaryName, remote, url)
+	log.Debug().Msgf("%s %s %s", binaryName, remote, url)
 
 	handleIAPAuthCookieFor(url)
 	git.PassThruRemoteHTTPSHelper(remote, url)
 }
 
 func printVersion(cmd *cobra.Command, args []string) {
-	fmt.Printf("%s %s\n", BinaryName, version)
+	fmt.Printf("%s %s\n", binaryName, version)
 }
 
 func installGitProtocol(cmd *cobra.Command, args []string) {
-	p := strings.TrimLeft(BinaryName, "git-remote-")
+	p := strings.TrimLeft(binaryName, "git-remote-")
 	git.InstallProtocol(p)
 	log.Info().Msgf("%s protocol configured in git!", p)
 }

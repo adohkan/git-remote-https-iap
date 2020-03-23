@@ -21,6 +21,7 @@ const (
 	IAPCookieName = "GCP_IAAP_AUTH_TOKEN"
 )
 
+// A Cookie holds pieces of information required to manage the IAP cookie
 type Cookie struct {
 	JarPath string
 	Domain  string

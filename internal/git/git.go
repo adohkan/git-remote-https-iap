@@ -33,6 +33,8 @@ func ConfigGetURLMatch(key, url string) string {
 	return strings.TrimSpace(string(stdout.Bytes()))
 }
 
+// SetGlobalConfig allows to set system-wide Git configuration.
+// The application exits in case of error.
 func SetGlobalConfig(url, section, key, value string) {
 	x := fmt.Sprintf("%s.%s.%s", section, url, key)
 	args := []string{"config", "--global", x, value}
@@ -43,6 +45,8 @@ func SetGlobalConfig(url, section, key, value string) {
 	}
 }
 
+// PassThruRemoteHTTPSHelper exec the git-remote-https helper,
+// which allows the caller to transparently pass-thru it.
 func PassThruRemoteHTTPSHelper(remote, url string) {
 	u, err := _url.Parse(url)
 	if err != nil {
@@ -63,6 +67,8 @@ func PassThruRemoteHTTPSHelper(remote, url string) {
 	}
 }
 
+// StoreCredentials persists credentials on disk, using the built-in
+// git-credential-store helper.
 func StoreCredentials(protocol, host, username, password string) error {
 	var stdin bytes.Buffer
 
@@ -80,6 +86,7 @@ func StoreCredentials(protocol, host, username, password string) error {
 	return res
 }
 
+// GetCredentials retrieves credentials from the built-in git-credential-store helper.
 func GetCredentials(protocol, host, username string) (string, error) {
 	var stdin, stdout bytes.Buffer
 
@@ -102,6 +109,7 @@ func GetCredentials(protocol, host, username string) (string, error) {
 	return "", fmt.Errorf("GetCredentials - not found for protocol=%s,host=%s,username=%s", protocol, host, username)
 }
 
+// InstallProtocol configure Git to allow a given protocol on the system.
 func InstallProtocol(protocol string) {
 	protocol = fmt.Sprintf("protocol.%s.allow", protocol)
 	args := []string{"config", "--global", protocol, "always"}

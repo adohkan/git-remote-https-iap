@@ -17,11 +17,16 @@ import (
 )
 
 const (
+	// CacheProtocol is the protocol used when saving the refresh-token in git-credential-store
+	// It can be an arbitrary value.
 	CacheProtocol = "iap"
+
+	// CacheUsername is the username used when saving the refresh-token in git-credential-store.
+	// It can be an arbitrary value.
 	CacheUsername = "refresh-token"
 )
 
-type Token struct {
+type token struct {
 	AccessToken string `json:"access_token"`
 	ExpiresIn   int    `json:"expires_in"`
 	Scope       string `json:"scope"`
@@ -95,9 +100,12 @@ func getRefreshTokenFromCache(key string) (string, error) {
 	return git.GetCredentials(CacheProtocol, key, CacheUsername)
 }
 
-// GetIAPAuthToken returns a raw IAP auth token for the given args
+// GetIAPAuthToken take care of the IAP Authentication process when relevant.
+// It optmize this workflow by detecting cases where an existing IAP auth token is already available,
+// and caching a refresh-token.
+// It returns a raw IAP auth token and any error encountered.
 func GetIAPAuthToken(domain, helperID, helperSecret, IAPclientID string) (string, error) {
-	var result Token
+	var result token
 
 	refreshToken, err := getRefreshTokenFromCache(domain)
 	if err != nil {
