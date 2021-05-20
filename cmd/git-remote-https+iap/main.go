@@ -51,11 +51,18 @@ var (
 		Short: "Configure IAP for a given repository",
 		Run:   configureIAP,
 	}
+
+	checkCmd = &cobra.Command{
+		Use:   "check remote url",
+		Short: "Refresh token for remote url if needed, then exit",
+		Run:   check,
+	}
 )
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(installProtocolCmd)
+	rootCmd.AddCommand(checkCmd)
 
 	configureCmd.Flags().StringVar(&repoURL, "repoURL", "", "URL of the git repository to configure (required)")
 	configureCmd.MarkFlagRequired("repoURL")
@@ -87,6 +94,13 @@ func execute(cmd *cobra.Command, args []string) {
 
 	handleIAPAuthCookieFor(url)
 	git.PassThruRemoteHTTPSHelper(remote, url)
+}
+
+func check(cmd *cobra.Command, args []string) {
+	remote, url := args[0], args[1]
+	log.Debug().Msgf("%s check %s %s", binaryName, remote, url)
+
+	handleIAPAuthCookieFor(url)
 }
 
 func printVersion(cmd *cobra.Command, args []string) {
