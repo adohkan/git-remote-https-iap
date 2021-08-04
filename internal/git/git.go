@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"syscall"
 
 	"github.com/rs/zerolog/log"
 )
@@ -61,9 +60,19 @@ func PassThruRemoteHTTPSHelper(remote, url string) {
 		log.Fatal().Msgf("passThruRemoteHTTPSHelper - %s", err.Error())
 	}
 
-	env := os.Environ()
-	if err := syscall.Exec(binary, args, env); err != nil {
-		log.Fatal().Msgf("passThruRemoteHTTPSHelper - %s", err.Error())
+	procAttr := &os.ProcAttr{Env: os.Environ(), Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}}
+	process, err := os.StartProcess(binary, args, procAttr)
+	if err != nil {
+		log.Fatal().Msgf("passThruRemoteHTTPSHelper: failed starting remote-https - %s", err.Error())
+	}
+
+	processState, err := process.Wait()
+	if err != nil {
+		log.Fatal().Msgf("passThruRemoteHTTPSHelper: failed waiting on remote-https - %s", err.Error())
+	}
+
+	if !processState.Success() {
+		os.Exit(processState.ExitCode())
 	}
 }
 
