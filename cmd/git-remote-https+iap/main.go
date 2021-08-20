@@ -119,8 +119,8 @@ func configureIAP(cmd *cobra.Command, args []string) {
 		Value:   https,
 	}
 	if strings.Contains(repo.Host, "*") {
-		log.Warn().Msg("While config is valid for wildcard hosts, git IAP auth requires \"insteadOf\" config for actual hosts")
-		log.Info().Msg("Actual hosts must be manually configured as follows (* replaced with subdomain):")
+		log.Warn().Msg("While config is valid for wildcard hosts, transparent support for https:// remotes require \"insteadOf\" config")
+		log.Info().Msg("Actual hosts must be manually configured as follows (with * replaced by subdomain):")
 		log.Info().Msg(insteadOf.CommandSuggestGlobal())
 	} else {
 		git.SetConfigGlobal(insteadOf)
