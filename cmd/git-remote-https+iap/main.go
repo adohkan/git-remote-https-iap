@@ -112,11 +112,23 @@ func configureIAP(cmd *cobra.Command, args []string) {
 	git.SetGlobalConfig(https, "iap", "clientID", clientID)
 
 	// let users manipulate standard 'https://' urls
-	httpsIAP := fmt.Sprintf("https+iap://%s", repo.Host)
-	git.SetGlobalConfig(httpsIAP, "url", "insteadOf", https)
+	insteadOf := &git.GitConfig{
+		Url:     fmt.Sprintf("https+iap://%s", repo.Host),
+		Section: "url",
+		Key:     "insteadOf",
+		Value:   https,
+	}
+	if strings.Contains(repo.Host, "*") {
+		log.Warn().Msg("While config is valid for wildcard hosts, git IAP auth requires \"insteadOf\" config for actual hosts")
+		log.Info().Msg("Actual hosts must be manually configured as follows (* replaced with subdomain):")
+		log.Info().Msg(insteadOf.CommandSuggestGlobal())
+	} else {
+		git.SetConfigGlobal(insteadOf)
+	}
 
 	// set cookie path
 	domainSlug := strings.ReplaceAll(repo.Host, ".", "-")
+	domainSlug = strings.ReplaceAll(domainSlug, "*", "_wildcard_")
 	cookiePath := fmt.Sprintf("~/.config/gcp-iap/%s.cookie", domainSlug)
 	git.SetGlobalConfig(https, "http", "cookieFile", cookiePath)
 }

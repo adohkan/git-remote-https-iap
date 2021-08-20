@@ -18,6 +18,25 @@ const (
 	GitBinary = "git"
 )
 
+type GitConfig struct {
+	Url     string
+	Section string
+	Key     string
+	Value   string
+}
+
+func (c *GitConfig) Name() string {
+	return fmt.Sprintf("%s.%s.%s", c.Section, c.Url, c.Key)
+}
+
+func (c *GitConfig) ArgsGlobal() []string {
+	return []string{"config", "--global", c.Name(), c.Value}
+}
+
+func (c *GitConfig) CommandSuggestGlobal() string {
+	return fmt.Sprintf("git %s", strings.Join(c.ArgsGlobal(), " "))
+}
+
 // ConfigGetURLMatch call 'git config --get-urlmatch' underneath
 func ConfigGetURLMatch(key, url string) string {
 	var stdout bytes.Buffer
@@ -33,16 +52,23 @@ func ConfigGetURLMatch(key, url string) string {
 	return strings.TrimSpace(string(stdout.Bytes()))
 }
 
+// SetConfigGlobal is a new signature for SetGlobalConfig
+func SetConfigGlobal(config *GitConfig) {
+	cmd := exec.Command(GitBinary, config.ArgsGlobal()...)
+	if err := cmd.Run(); err != nil {
+		log.Fatal().Msgf("SetGlobalConfig - could not set config '%s': %s", config.Name(), err)
+	}
+}
+
 // SetGlobalConfig allows to set system-wide Git configuration.
 // The application exits in case of error.
 func SetGlobalConfig(url, section, key, value string) {
-	x := fmt.Sprintf("%s.%s.%s", section, url, key)
-	args := []string{"config", "--global", x, value}
-	cmd := exec.Command(GitBinary, args...)
-
-	if err := cmd.Run(); err != nil {
-		log.Fatal().Msgf("SetGlobalConfig - could not set config '%s': %s", x, err)
-	}
+	SetConfigGlobal(&GitConfig{
+		Url:     url,
+		Section: section,
+		Key:     key,
+		Value:   value,
+	})
 }
 
 // PassThruRemoteHTTPSHelper exec the git-remote-https helper,
