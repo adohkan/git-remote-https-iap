@@ -1,8 +1,25 @@
+.SECONDEXPANSION:
+
+ifeq ($(OS),Windows_NT)
+  SHELL := powershell.exe
+  .SHELLFLAGS := -NoProfile -Command
+  MKDIR := $$null = New-Item -Type Directory
+  COPY := Copy-Item -Force
+  MOVE := Move-Item -Force
+  RM := Remove-Item -Recurse -Force
+else
+  MKDIR := mkdir -p
+  COPY := cp -f
+  MOVE := mv -f
+  RM := rm -rf
+endif
+
 CMD_PATH := cmd/git-remote-https+iap
 CMD_NAME := git-remote-https+iap
 BUILD_TARGETS := \
 	darwin-amd64 \
-	linux-amd64
+	linux-amd64 \
+	windows-amd64
 
 DIST_PATH := dist/
 BIN_PATH := $(DIST_PATH)bin/
@@ -10,29 +27,46 @@ RELEASE_PATH := $(DIST_PATH)releases/
 
 version := $(shell git describe --match "v*.*" --abbrev=7 --tags --dirty)
 build_args := -ldflags "-X main.version=${version}"
-tar_xform_arg := $(shell tar --version | grep -q 'GNU tar' && echo '--xform' || echo '-s')
-tar_xform_cmd := $(shell tar --version | grep -q 'GNU tar' && echo 's')
 
 .PHONY: all
 all: build
 
-$(BIN_PATH) $(RELEASE_PATH):
-	mkdir -p $@
+$(RELEASE_PATH) $(addprefix $(BIN_PATH), $(BUILD_TARGETS)):
+	$(MKDIR) $@
 
-BUILDS := $(foreach target, $(BUILD_TARGETS), $(BIN_PATH)$(CMD_NAME)-$(target))
-$(BUILDS): OS   = $(word 1, $(subst -, ,$(subst $(CMD_NAME)-,,$(notdir $@))))
-$(BUILDS): ARCH = $(word 2, $(subst -, ,$(subst $(CMD_NAME)-,,$(notdir $@))))
-$(BUILDS): $(BIN_PATH)
-	env CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) go build ${build_args} -o $(BIN_PATH)${CMD_NAME}-$(OS)-$(ARCH) ${CMD_PATH}/*.go
+$(BIN_PATH)%/$(CMD_NAME): export GOOS   = $(word 1, $(subst -, ,$*))
+$(BIN_PATH)%/$(CMD_NAME): export GOARCH = $(word 2, $(subst -, ,$*))
+$(BIN_PATH)%/$(CMD_NAME): export CGO_ENABLED = 0
+$(BIN_PATH)%/$(CMD_NAME): $(wildcard $(CMD_PATH)/*.go internal/*/*.go) | $(BIN_PATH)%
+	go build $(build_args) -o $@ $<
+
+$(BIN_PATH)%/$(CMD_NAME).exe: $(BIN_PATH)%/$(CMD_NAME)
+	$(MOVE) $< $@
+
+BUILDS := $(foreach target, $(BUILD_TARGETS), $(BIN_PATH)$(target)/$(CMD_NAME)$(if $(filter windows%,$(target)),.exe))
+
+.PHONY: build
 build: $(BUILDS)
 
 RELEASE_INCLUDES = README.md
-RELEASE_TARGETS := $(foreach target, $(BUILDS), $(RELEASE_PATH)$(notdir $(target))-$(version).tar.gz)
-$(RELEASE_TARGETS): $(RELEASE_PATH)%-$(version).tar.gz: $(BIN_PATH)% $(RELEASE_INCLUDES)
-	mkdir -p $(RELEASE_PATH)
-	tar $(tar_xform_arg) '$(tar_xform_cmd)!$(BIN_PATH)$(CMD_NAME).*!$(CMD_NAME)!' -czf $@ $^
-	cd $(RELEASE_PATH) && shasum -a 256 $(notdir $@) >$(notdir $@).sha256
-release: $(RELEASE_TARGETS)
+RELEASE_TARGETS := $(foreach target, $(BUILD_TARGETS), $(RELEASE_PATH)$(CMD_NAME)-$(target)-$(version).tar.gz)
+
+$(RELEASE_PATH)$(CMD_NAME)-%-$(version).tar.gz: $(BIN_PATH)%/$(CMD_NAME).tar.gz | $(RELEASE_PATH)
+	$(MOVE) $< $@
+
+$(BIN_PATH)%/$(CMD_NAME).tar.gz: $(BIN_PATH)%/$(CMD_NAME)$$(if $$(filter windows%,$$*),.exe) $(RELEASE_INCLUDES)
+	$(COPY) $(filter-out $<,$^) $(@D)
+	cd $(@D); tar czf $(@F) $(^F)
+
+%.sha256: %
+ifeq ($(OS),Windows_NT)
+	$$env:PSModulePath = "$$PSHOME\\Modules"; "$$((Get-FileHash -Algorithm SHA256 $<).Hash.ToLower())  $(<F)" > $@
+else
+	cd $(@D) && shasum -a 256 $(<F) > $(@F)
+endif
+
+.PHONY: release
+release: $(RELEASE_TARGETS) $(addsuffix .sha256, $(RELEASE_TARGETS))
 
 .PHONY: version
 version:
@@ -40,4 +74,4 @@ version:
 
 .PHONY: clean
 clean:
-	rm -rf $(DIST_PATH)
+	-$(RM) $(DIST_PATH)
