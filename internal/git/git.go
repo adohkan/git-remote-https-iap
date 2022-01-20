@@ -72,13 +72,15 @@ func SetGlobalConfig(url, section, key, value string) {
 
 // PassThruRemoteHTTPSHelper exec the git-remote-https helper,
 // which allows the caller to transparently pass-thru it.
-func PassThruRemoteHTTPSHelper(remote, url string) {
+func PassThruRemoteHTTPSHelper(remote, url string, token string) {
 	u, err := _url.Parse(url)
 	if err != nil {
 		log.Fatal().Msgf("passThruRemoteHTTPSHelper - could not parse %s: %s", url, err.Error())
 	}
 	u.Scheme = "https"
-	args := []string{"git", "remote-https", remote, u.String()}
+	extraHeader := fmt.Sprintf("http.extraHeader=Proxy-Authorization: Bearer %s", token)
+
+	args := []string{"git", "-c", extraHeader, "remote-https", remote, u.String()}
 	log.Debug().Msgf("passThruRemoteHTTPSHelper exec: %v", args)
 
 	binary, err := exec.LookPath(GitBinary)
