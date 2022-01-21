@@ -92,8 +92,8 @@ func execute(cmd *cobra.Command, args []string) {
 	remote, url := args[0], args[1]
 	log.Debug().Msgf("%s %s %s", binaryName, remote, url)
 
-	handleIAPAuthCookieFor(url)
-	git.PassThruRemoteHTTPSHelper(remote, url)
+	c := handleIAPAuthCookieFor(url)
+	git.PassThruRemoteHTTPSHelper(remote, url, c.Token.Raw)
 }
 
 func check(cmd *cobra.Command, args []string) {
@@ -147,7 +147,7 @@ func configureIAP(cmd *cobra.Command, args []string) {
 	git.SetGlobalConfig(https, "http", "cookieFile", cookiePath)
 }
 
-func handleIAPAuthCookieFor(url string) {
+func handleIAPAuthCookieFor(url string) *iap.Cookie {
 	// All our work will be based on the basedomain of the provided URL
 	// as IAP would be setup for the whole domain.
 	url, err := toHTTPSBaseDomain(url)
@@ -172,6 +172,8 @@ func handleIAPAuthCookieFor(url string) {
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
+
+	return cookie
 }
 
 func toHTTPSBaseDomain(addr string) (string, error) {
