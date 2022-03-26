@@ -34,6 +34,11 @@ type token struct {
 	IDToken     string `json:"id_token"`
 }
 
+type httpError struct {
+	Error     string `json:"error"`
+	ErrorDesc string `json:"error_description"`
+}
+
 // getRefreshTokenFromBrowserFlow initialize an OAuth login workflow via the browser and returns a refresh token valid for a given url
 // see: https://github.com/int128/oauth2cli/blob/master/example/main.go
 func getRefreshTokenFromBrowserFlow(domain, helperID, helperSecret string) (string, error) {
@@ -106,6 +111,7 @@ func getRefreshTokenFromCache(key string) (string, error) {
 // It returns a raw IAP auth token and any error encountered.
 func GetIAPAuthToken(domain, helperID, helperSecret, IAPclientID string) (string, error) {
 	var result token
+	var errorMesg httpError
 
 	refreshToken, err := getRefreshTokenFromCache(domain)
 	if err != nil {
@@ -133,9 +139,16 @@ func GetIAPAuthToken(domain, helperID, helperSecret, IAPclientID string) (string
 		return "", fmt.Errorf("could not get exchange 'refresh_token' for IAP Auth Token: %s", err.Error())
 	}
 
+	if resp.StatusCode != 200 {
+		json.NewDecoder(resp.Body).Decode(&errorMesg)
+		return "", fmt.Errorf("could not get exchange 'refresh_token' for IAP Auth Token: HTTP Error Code: %s .... Error Description: %s", errorMesg.ErrorDesc, errorMesg.Error)
+	}
+
 	log.Debug().Msgf("GetIAPAuthToken - successfully used 'refresh_token' to claim IAP Auth Token")
 
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("could not get exchange 'refresh_token' for IAP Auth Token: %s", err.Error())
+	}
 
 	return result.IDToken, nil
 }
