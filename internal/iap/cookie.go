@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	jwt "github.com/golang-jwt/jwt"
 
 	"github.com/adohkan/git-remote-https-iap/internal/git"
 	"github.com/rs/zerolog/log"
