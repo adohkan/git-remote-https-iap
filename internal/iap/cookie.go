@@ -92,7 +92,9 @@ func (c *Cookie) readRawTokenFromJar() (string, error) {
 }
 
 // NewCookie takes care of the authentication workflow and creates the relevant IAP Cookie on the filesystem
-func NewCookie(domain string) (*Cookie, error) {
+func NewCookie(domain string, forcebrowserflow bool) (*Cookie, error) {
+
+	log.Debug().Msgf("[NewCookie] Attempting to get NewCookie")
 
 	helperID := git.ConfigGetURLMatch("iap.helperID", domain)
 	helperSecret := git.ConfigGetURLMatch("iap.helperSecret", domain)
@@ -101,17 +103,20 @@ func NewCookie(domain string) (*Cookie, error) {
 
 	url, err := url.Parse(domain)
 	if err != nil {
+		log.Debug().Msgf("[NewCookie] Failed to Parse domain")
 		return nil, err
 	}
 
-	rawToken, err := GetIAPAuthToken(domain, helperID, helperSecret, IAPClientID)
+	rawToken, err := GetIAPAuthToken(domain, helperID, helperSecret, IAPClientID, forcebrowserflow)
 	if err != nil {
+		log.Debug().Msgf("[NewCookie] Failed to GetIAPAuthToken")
 		return nil, err
 	}
 	log.Debug().Msgf("rawToken: %+v", rawToken)
 
 	token, claims, err := parseJWToken(rawToken)
 	if err != nil {
+		log.Debug().Msgf("[NewCookie] Failed to parseJWToken")
 		return nil, err
 	}
 

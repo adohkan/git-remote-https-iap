@@ -139,11 +139,11 @@ func GetCredentials(protocol, host, username string) (string, error) {
 
 	match := regexp.MustCompile("password=(.*)").FindStringSubmatch(string(stdout.Bytes()))
 	if match != nil {
-		log.Debug().Msgf("GetCredentials - found credentials for protocol=%s,host=%s,username=%s", protocol, host, username)
+		log.Debug().Msgf("[GetCredentials] Found credentials for protocol=%s,host=%s,username=%s", protocol, host, username)
 		return match[1], nil
 	}
 
-	return "", fmt.Errorf("GetCredentials - not found for protocol=%s,host=%s,username=%s", protocol, host, username)
+	return "", fmt.Errorf("[GetCredentials] Not found for protocol=%s,host=%s,username=%s", protocol, host, username)
 }
 
 // InstallProtocol configure Git to allow a given protocol on the system.
