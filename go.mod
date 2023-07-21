@@ -3,7 +3,7 @@ module github.com/adohkan/git-remote-https-iap
 go 1.17
 
 require (
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/int128/oauth2cli v1.14.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/rs/zerolog v1.29.1
