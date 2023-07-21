@@ -27,6 +27,9 @@ var (
 	// only used in configureCmd
 	repoURL, helperID, helperSecret, clientID string
 
+	// Only used in checkcmd
+	forcebrowser bool
+
 	rootCmd = &cobra.Command{
 		Use:   fmt.Sprintf("%s remote url", binaryName),
 		Short: "git-remote-helper that handles authentication for GCP Identity Aware Proxy",
@@ -72,6 +75,9 @@ func init() {
 	configureCmd.MarkFlagRequired("helperSecret")
 	configureCmd.Flags().StringVar(&clientID, "clientID", "", "OAuth Client ID of the IAP instance (required)")
 	configureCmd.MarkFlagRequired("clientID")
+
+	checkCmd.Flags().BoolVarP(&forcebrowser, "forcebrowser", "f", false, "Forces browser refresh flow")
+
 	rootCmd.AddCommand(configureCmd)
 
 	// set log level
@@ -92,15 +98,15 @@ func execute(cmd *cobra.Command, args []string) {
 	remote, url := args[0], args[1]
 	log.Debug().Msgf("%s %s %s", binaryName, remote, url)
 
-	c := handleIAPAuthCookieFor(url)
+	c := handleIAPAuthCookieFor(url, false)
 	git.PassThruRemoteHTTPSHelper(remote, url, c.Token.Raw)
 }
 
 func check(cmd *cobra.Command, args []string) {
 	remote, url := args[0], args[1]
-	log.Debug().Msgf("%s check %s %s", binaryName, remote, url)
+	log.Debug().Msgf("%s check %s %s: forcebrowser=%s", binaryName, remote, url, strconv.FormatBool(forcebrowser))
 
-	handleIAPAuthCookieFor(url)
+	handleIAPAuthCookieFor(url, forcebrowser)
 }
 
 func printVersion(cmd *cobra.Command, args []string) {
@@ -147,26 +153,26 @@ func configureIAP(cmd *cobra.Command, args []string) {
 	git.SetGlobalConfig(https, "http", "cookieFile", cookiePath)
 }
 
-func handleIAPAuthCookieFor(url string) *iap.Cookie {
+func handleIAPAuthCookieFor(url string, forcebrowserflow bool) *iap.Cookie {
 	// All our work will be based on the basedomain of the provided URL
 	// as IAP would be setup for the whole domain.
 	url, err := toHTTPSBaseDomain(url)
 	if err != nil {
-		log.Error().Msgf("Could not convert %s in https://: %s", url, err)
+		log.Error().Msgf("[handleIAPAuthCookieFor] Could not convert %s in https://: %s", url, err)
 	}
 
-	log.Debug().Msgf("Manage IAP auth for %s", url)
+	log.Debug().Msgf("[handleIAPAuthCookieFor] Manage IAP auth for %s", url)
 
 	cookie, err := iap.ReadCookie(url)
 	switch {
 	case err != nil:
-		log.Debug().Msgf("could not read IAP cookie for %s: %s", url, err.Error())
-		cookie, err = iap.NewCookie(url)
+		log.Debug().Msgf("[handleIAPAuthCookieFor] Could not read IAP cookie for %s: %s", url, err.Error())
+		cookie, err = iap.NewCookie(url, forcebrowserflow)
 	case cookie.Expired():
-		log.Debug().Msgf("IAP cookie for %s has expired", url)
-		cookie, err = iap.NewCookie(url)
+		log.Debug().Msgf("[handleIAPAuthCookieFor] IAP cookie for %s has expired", url)
+		cookie, err = iap.NewCookie(url, forcebrowserflow)
 	case !cookie.Expired():
-		log.Debug().Msgf("IAP Cookie still valid until %s", time.Unix(cookie.Claims.ExpiresAt, 0))
+		log.Debug().Msgf("[handleIAPAuthCookieFor] IAP Cookie still valid until %s", time.Unix(cookie.Claims.ExpiresAt, 0))
 	}
 
 	if err != nil {
