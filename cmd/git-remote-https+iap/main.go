@@ -168,9 +168,17 @@ func handleIAPAuthCookieFor(url string, forcebrowserflow bool) *iap.Cookie {
 	case err != nil:
 		log.Debug().Msgf("[handleIAPAuthCookieFor] Could not read IAP cookie for %s: %s", url, err.Error())
 		cookie, err = iap.NewCookie(url, forcebrowserflow)
+		if err != nil {
+			log.Debug().Msgf("[handleIAPAuthCookieFor] Retrying with forcebrowserflow: true")
+			cookie, err = iap.NewCookie(url, true)
+		}
 	case cookie.Expired():
 		log.Debug().Msgf("[handleIAPAuthCookieFor] IAP cookie for %s has expired", url)
 		cookie, err = iap.NewCookie(url, forcebrowserflow)
+		if err != nil {
+			log.Debug().Msgf("[handleIAPAuthCookieFor] Retrying with forcebrowserflow: true")
+			cookie, err = iap.NewCookie(url, true)
+		}
 	case !cookie.Expired():
 		log.Debug().Msgf("[handleIAPAuthCookieFor] IAP Cookie still valid until %s", time.Unix(cookie.Claims.ExpiresAt, 0))
 	}
