@@ -162,6 +162,9 @@ func parseJWToken(rawToken string) (jwt.Token, jwt.StandardClaims, error) {
 	var claims jwt.StandardClaims
 
 	token, _, err := p.ParseUnverified(rawToken, &claims)
+	if err != nil {
+		log.Debug().Msgf("Token parse failed. It might not have refreshed properly. Is your account locked or invalid? If not: Try clearing ~/.git-credentials and ~/.config/gcp-iap/*.cookie")
+	}
 	return *token, claims, err
 }
 
